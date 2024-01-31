@@ -22,11 +22,12 @@ def send_midi_message(note, velocity, channel=0):
     time.sleep(0.5)
 
     # Create a Note Off message
-    message = mido.Message('note_off', note=note, velocity=0, channel=channel)
+    message = mido.Message('note_off', note=note, v1elocity=0, channel=channel)
 
     # Send the MIDI message
     virtual_port.send(message)
-
+while True:
+    pass
 # Example: Send a C4 note with velocity 64 on channel 0
 send_midi_message(note=60, velocity=64, channel=0)
 

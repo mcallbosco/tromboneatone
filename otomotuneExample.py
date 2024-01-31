@@ -1,6 +1,6 @@
 #Utility to turn your otamatone into a midi controller using the otomamidi.py script
 
-import otamatroller
+import otomotroller
 import time
 from PyQt5 import QtWidgets
 
@@ -22,12 +22,15 @@ tuning = False
 def callback(freq):
     global current_freq
     current_freq = freq
+    print (freq)
 
 def getFreq():
-    otamatroller.startTuner(callback)
-    while current_freq ==0:
-        pass
-    otamatroller.stopTuner()
+    global current_freq
+    current_freqold = 0
+    #start otamtroller on a new thread
+    while current_freqold == 0 :
+       print ("waiting")
+       current_freqold = current_freq
     return current_freq
 
 def spawnTuningWindow():
@@ -87,8 +90,19 @@ def spawnTuningWindow():
 
     window.show()
     app.exec_()
-    
-    
 
+    #on close, exit the program 
+    global otamatoneThread
+    otomotroller.stopTuner()
+    otamatoneThread.join()
+    exit()
+
+
+
+    
+    
+    
+import threading
+otamatoneThread = threading.Thread(target=otomotroller.startTuner, args=(callback,))
+otamatoneThread.start()
 spawnTuningWindow()
-if 

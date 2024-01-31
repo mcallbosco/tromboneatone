@@ -18,12 +18,12 @@ import time
 
 # General settings that can be changed by the user
 SAMPLE_FREQ = 20000 # sample frequency in Hz
-WINDOW_SIZE = 600 # window size of the DFT in samples
+WINDOW_SIZE = 400 # window size of the DFT in samples
 WINDOW_STEP = 300 #s step size of window
-NUM_HPS = 10 # max number of harmonic product spectrums
+NUM_HPS = 7 # max number of harmonic product spectrums
 POWER_THRESH = 1e-6 # tuning is activated if the signal power exceeds this threshold
 CONCERT_PITCH = 440 # defining a1
-WHITE_NOISE_THRESH = 0.2 # everything under WHITE_NOISE_THRESH*avg_energy_per_freq is cut off
+WHITE_NOISE_THRESH = 0.4 # everything under WHITE_NOISE_THRESH*avg_energy_per_freq is cut off
 
 WINDOW_T_LEN = WINDOW_SIZE / SAMPLE_FREQ # length of the window in seconds
 SAMPLE_T_LENGTH = 1 / SAMPLE_FREQ # length between two samples in seconds
@@ -33,6 +33,13 @@ OCTAVE_BANDS = [50, 100, 200, 400, 800, 1600, 3200, 6400, 12800, 25600]
 # Global variables
 max_freq = 0
 OutsideCallback = None
+
+#Sometimes, random notes are detected, this is a buffer to make sure that the note is actually being played
+previousNoteBufferSize = 3
+previousNoteBuffer = list()
+currentSustainedNote = 0
+sustainedCounter = 0
+skipFirstNotes = 0
 
 
 
@@ -112,7 +119,12 @@ def find_closest_note(pitch):
 
 HANN_WINDOW = np.hanning(WINDOW_SIZE)
 def callback(indata, frames, time, status):
+  global previousNoteBuffer
+  global previousNoteBufferSize
   global max_freq
+  global sustainedCounter
+  global skipFirstNotes
+  global currentSustainedNote
 
   """
   Callback function of the InputStream method.
@@ -134,6 +146,10 @@ def callback(indata, frames, time, status):
     # skip if signal power is too low
     signal_power = (np.linalg.norm(callback.window_samples, ord=2)**2) / len(callback.window_samples)
     if signal_power < POWER_THRESH:
+      max_freq = 0
+      figureOutCallback()
+      previousNoteBuffer = list()
+      sustainedCounter = 0
       return
 
     # avoid spectral leakage by multiplying the signal with a hann window
@@ -170,7 +186,45 @@ def callback(indata, frames, time, status):
       hps_spec = tmp_hps_spec
 
     max_ind = np.argmax(hps_spec)
-    max_freq = max_ind * (SAMPLE_FREQ/WINDOW_SIZE) / NUM_HPS
+    if (max_ind * (SAMPLE_FREQ/WINDOW_SIZE) / NUM_HPS <120):
+      max_freq = 0
+      figureOutCallback()
+      previousNoteBuffer = list()
+      sustainedCounter = 0
+      return
+
+
+    if previousNoteBuffer == list() and sustainedCounter < skipFirstNotes:
+        sustainedCounter += 1
+        max_freq = 0
+        figureOutCallback()
+        return
+    previousNoteBuffer.append(max_ind * (SAMPLE_FREQ/WINDOW_SIZE) / NUM_HPS)
+    if (len(previousNoteBuffer) > previousNoteBufferSize):
+        previousNoteBuffer.pop(0)
+
+
+    noteBufferCheck = True
+    for i in range(len(previousNoteBuffer)-1):
+        diffrence = abs(previousNoteBuffer[i] - previousNoteBuffer[i + 1])
+        print (diffrence)
+        if diffrence > 2 :
+            noteBufferCheck = False
+          
+    print (noteBufferCheck)
+    if (noteBufferCheck):
+      max_freq = max_ind * (SAMPLE_FREQ/WINDOW_SIZE) / NUM_HPS
+      currentSustainedNote = max_freq
+    else:
+      #make max_freq the number that is the highest value in the buffer
+      max_freq = max(previousNoteBuffer)
+
+    print (previousNoteBuffer)
+    
+    
+    if (max_freq == 0):
+        figureOutCallback()
+        return
     
 
     closest_note, closest_pitch = find_closest_note(max_freq)
@@ -183,14 +237,28 @@ def callback(indata, frames, time, status):
     callback.noteBuffer.pop()
 
 def startTuner(callbackOut, inputDevice = None):
+    #clear the buffer
+
+
+    global runningTuner
+    runningTuner = True
     global OutsideCallback
     OutsideCallback = callbackOut
     with sd.InputStream(channels=1, callback=callback, blocksize=WINDOW_STEP, samplerate=SAMPLE_FREQ):
-        while True:
+        while runningTuner:
             time.sleep(0.5)
 
 def stopTuner():
-    sd.stop()
+    #stop the tuner in a way where it can be restarted
+    global runningTuner
+    runningTuner = False
+
+    callback.window_samples = [0 for _ in range(WINDOW_SIZE)]
+    callback.noteBuffer = ["1","2"]
+    global max_freq
+    max_freq = 0
+
+
 
 def setConfig(key, value):
     global config

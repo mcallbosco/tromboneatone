@@ -13,15 +13,14 @@ import numpy as np
 import scipy.fftpack
 import sounddevice as sd
 import time
-import mouse
 import math
 
 # General settings that can be changed by the user
 SAMPLE_FREQ = 20000 # sample frequency in Hz
 WINDOW_SIZE = 600 # window size of the DFT in samples
 WINDOW_STEP = 300 #s step size of window
-NUM_HPS = 10 # max number of harmonic product spectrums
-POWER_THRESH = 1e-6 # tuning is activated if the signal power exceeds this threshold
+NUM_HPS = 8 # max number of harmonic product spectrums
+POWER_THRESH = 1e-7 # tuning is activated if the signal power exceeds this threshold
 CONCERT_PITCH = 440 # defining a1
 WHITE_NOISE_THRESH = 0.2 # everything under WHITE_NOISE_THRESH*avg_energy_per_freq is cut off
 
@@ -34,7 +33,7 @@ OCTAVE_BANDS = [50, 100, 200, 400, 800, 1600, 3200, 6400, 12800, 25600]
 #USER CONFIG STUFF
 
 mouseActive = True   #if true, mouse will move to the note
-truePitch = False    #If true, the mouse will only respond to pitches that are within the range of the game's notes. You can change the octive it uses by changing the value for the middleOctive var
+truePitch = True    #If true, the mouse will only respond to pitches that are within the range of the game's notes. You can change the octive it uses by changing the value for the middleOctive var
 #If false, the mouse will respond and move according to pitches either defined by tuning or default values.
 invertNotTruePitch = False    #Inverts the mouse movement when truePitch mode is not enabled.
 tuneAtStart = True            #When the program starts there will be tuning prompts when truePitch is not enabled
@@ -120,7 +119,7 @@ def callback(indata, frames, time, status):
     # skip if signal power is too low
     signal_power = (np.linalg.norm(callback.window_samples, ord=2)**2) / len(callback.window_samples)
     if signal_power < POWER_THRESH:
-      mouse.release()
+
       if not tuning:
         'print("Closest note: ...")'
       else:
@@ -254,11 +253,10 @@ def callback(indata, frames, time, status):
               pitchPersentage = 1 - pitchPersentage
               print (pitchPersentage)"""
               mousepointposH = int(gameHeightInputSizeC * pitchPersentage) + topMarginSizeC
-              mouse.move(screenWidth/2+100, mousepointposH, absolute=True)
-              mouse.press()
+              #mouse.move(screenWidth/2+100, mousepointposH, absolute=True)
+              #mouse.press()
               
-          else:
-              mouse.release()
+
 
 
       if mouseActive and truePitch == False:
@@ -282,8 +280,8 @@ def callback(indata, frames, time, status):
             pitchPersentage = 1 - pitchPersentage
           print (pitchPersentage)
           mousepointposH = int(gameHeightInputSize * pitchPersentage) + topMarginSize
-          mouse.move(screenWidth/2+100, mousepointposH, absolute=True)
-          mouse.press()
+          #mouse.move(screenWidth/2+100, mousepointposH, absolute=True)
+          #mouse.press()
 
 
       if callback.noteBuffer.count(callback.noteBuffer[0]) == len(callback.noteBuffer):
