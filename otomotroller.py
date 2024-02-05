@@ -20,7 +20,7 @@ import time
 SAMPLE_FREQ = 20000 # sample frequency in Hz
 WINDOW_SIZE = 400 # window size of the DFT in samples
 WINDOW_STEP = 300 #s step size of window
-NUM_HPS = 7 # max number of harmonic product spectrums
+NUM_HPS = 1 # max number of harmonic product spectrums
 POWER_THRESH = 1e-6 # tuning is activated if the signal power exceeds this threshold
 CONCERT_PITCH = 440 # defining a1
 WHITE_NOISE_THRESH = 0.4 # everything under WHITE_NOISE_THRESH*avg_energy_per_freq is cut off
@@ -35,7 +35,7 @@ max_freq = 0
 OutsideCallback = None
 
 #Sometimes, random notes are detected, this is a buffer to make sure that the note is actually being played
-previousNoteBufferSize = 3
+previousNoteBufferSize = 0
 previousNoteBuffer = list()
 currentSustainedNote = 0
 sustainedCounter = 0
@@ -137,7 +137,6 @@ def callback(indata, frames, time, status):
     callback.noteBuffer = ["1","2"]
 
   if status:
-    print(status)
     return
   if any(indata):
     callback.window_samples = np.concatenate((callback.window_samples, indata[:, 0])) # append new samples
@@ -207,11 +206,9 @@ def callback(indata, frames, time, status):
     noteBufferCheck = True
     for i in range(len(previousNoteBuffer)-1):
         diffrence = abs(previousNoteBuffer[i] - previousNoteBuffer[i + 1])
-        print (diffrence)
         if diffrence > 2 :
             noteBufferCheck = False
           
-    print (noteBufferCheck)
     if (noteBufferCheck):
       max_freq = max_ind * (SAMPLE_FREQ/WINDOW_SIZE) / NUM_HPS
       currentSustainedNote = max_freq
@@ -219,7 +216,6 @@ def callback(indata, frames, time, status):
       #make max_freq the number that is the highest value in the buffer
       max_freq = max(previousNoteBuffer)
 
-    print (previousNoteBuffer)
     
     
     if (max_freq == 0):

@@ -9,6 +9,10 @@ playingNote = False
 
 prevNote = ""
 
+middleRangeNotes = range(50, 81)
+
+playingNotes = list()
+
 def callback(freq):
     global playingNote
     global prevNote
@@ -23,7 +27,6 @@ def callback(freq):
     current_freq = freq
     current_note, current_pitch , midinote= find_closest_note(freq)
     sendSustanedBasedOnIfNoteChanged(midinote)
-    print (freq)
 
 
 CONCERT_PITCH = 440
@@ -41,13 +44,26 @@ def find_closest_note(pitch):
   closest_note = ALL_NOTES[i%12] + str(4 + (i + 9) // 12)
   closest_pitch = CONCERT_PITCH*2**(i/12)
   midiNote = i + 69
+  tunedTown = midiNote - 36
+  print (midiNote)
+  print (pitch)
 
-  return closest_note, closest_pitch, midiNote
+  return closest_note, closest_pitch, tunedTown
 
 def send_midi_message(note, velocity, channel=0):
+    #save the note to the list of playing notes
+    global playingNotes
+    for playingNote in playingNotes:
+        if (playingNote != note):
+            closeMessage = mido.Message('note_off', note=playingNote, velocity=0, channel=channel)
+            virtual_port.send(closeMessage)
+            playingNotes.remove(playingNote)
+
     # Create a Note On message
     message = mido.Message('note_on', note=note, velocity=velocity, channel=channel)
-    
+    playingNotes.append(note)
+
+
     # Send the MIDI message
     virtual_port.send(message)
 
@@ -58,8 +74,6 @@ def sendSustanedBasedOnIfNoteChanged(note):
     playingNote = True
     global prevNote
     if (note != prevNote):
-        message = mido.Message('note_off', note=note, velocity=0, channel=0)
-        virtual_port.send(message)
         send_midi_message(note, 127)
         prevNote = note
     prevNote = note  
